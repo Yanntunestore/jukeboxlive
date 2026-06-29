@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Répertoire</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #0f3460;
+    --accent: #e94560;
+    --accent2: #f5a623;
+    --text: #eaeaea;
+    --text-dim: #8892a4;
+    --border: #2a3a5c;
+    --success: #4caf50;
+    --danger: #e94560;
+    --radius: 12px;
+    --font-main: -apple-system, 'Helvetica Neue', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-main);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── PAGES ── */
+  .page { display: none; min-height: 100vh; flex-direction: column; }
+  .page.active { display: flex; }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+  .header h1 span { color: var(--accent); }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+  }
+  .modal h2 { font-size: 22px; margin-bottom: 10px; }
+  .modal p { color: var(--text-dim); font-size: 15px; margin-bottom: 24px; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { opacity: 0.8; transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-sm { padding: 8px 14px; font-size: 14px; }
+  .btn-full { width: 100%; }
+
+  /* ── LISTE ── */
+  .list-container { flex: 1; overflow-y: auto; padding: 16px; }
+  .song-table { width: 100%; border-collapse: collapse; }
+  .song-table thead th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+  .song-table thead th:first-child { width: 44px; }
+  .song-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .song-table tbody tr:active { background: var(--card); }
+  .song-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+  .song-table td { padding: 12px; font-size: 15px; vertical-align: middle; }
+  .song-table td:first-child {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 14px;
+    width: 44px;
+  }
+  .song-table .artist { color: var(--text); font-weight: 500; }
+  .song-table .title { color: var(--text-dim); font-size: 14px; }
+  .song-table .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .dot-ok { background: var(--success); }
+  .dot-empty { background: var(--accent); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 12px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ── EDIT MODAL ── */
+  .edit-form { text-align: left; }
+  .edit-form label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; margin-top: 16px; }
+  .edit-form input, .edit-form textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 12px;
+    font-family: var(--font-main);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .edit-form input:focus, .edit-form textarea:focus { border-color: var(--accent); }
+  .edit-form textarea { min-height: 200px; resize: vertical; line-height: 1.6; }
+  .edit-num { font-size: 28px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  .fetch-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .fetch-status.loading { display: block; background: var(--card); color: var(--text-dim); }
+  .fetch-status.ok { display: block; background: rgba(76,175,80,0.15); color: var(--success); }
+  .fetch-status.error { display: block; background: rgba(233,69,96,0.15); color: var(--accent); }
+
+  /* ── PAGE SCÈNE ── */
+  #page-scene {
+    background: #0d0d0d;
+    align-items: center;
+    justify-content: center;
+  }
+  .scene-inner {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .scene-title { font-size: 16px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+
+  .numpad-display {
+    background: #111;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    font-size: 56px;
+    font-weight: 800;
+    color: var(--accent2);
+    letter-spacing: 6px;
+    min-width: 200px;
+    text-align: center;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .numpad-display.placeholder { color: var(--border); font-size: 36px; letter-spacing: 2px; }
+
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .numpad-key {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 28px;
+    font-weight: 600;
+    padding: 20px 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.1s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .numpad-key:active { background: var(--accent); transform: scale(0.94); }
+  .numpad-key.key-del { font-size: 20px; color: var(--text-dim); }
+  .numpad-key.key-go { background: var(--accent); color: #fff; font-size: 18px; }
+  .numpad-key.key-go:active { background: #c73652; }
+
+  /* ── PAGE PAROLES ── */
+  #page-lyrics {
+    background: #0d0d0d;
+    flex-direction: column;
+  }
+  .lyrics-header {
+    padding: 18px 20px;
+    background: #111;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .lyrics-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent2);
+    min-width: 56px;
+    flex-shrink: 0;
+  }
+  .lyrics-meta { flex: 1; }
+  .lyrics-song-line {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.3;
+  }
+  .lyrics-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px;
+    font-size: 26px;
+    line-height: 2;
+    white-space: pre-wrap;
+    color: #f0f0f0;
+  }
+  .lyrics-nav {
+    padding: 12px 16px;
+    background: #111;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── PDF INFO ── */
+  .pdf-info {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    text-align: left;
+    margin-top: 8px;
+  }
+  .pdf-info strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     PAGE 1 : LISTE
+══════════════════════════════════════════ -->
+<div id="page-liste" class="page active">
+  <div class="header">
+    <h1>Mon <span>Répertoire</span></h1>
+    <button class="btn btn-sm btn-secondary" onclick="goToScene()">🎤 Scène</button>
+  </div>
+
+  <div class="list-container">
+    <table class="song-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Artiste</th>
+          <th>Titre</th>
+        </tr>
+      </thead>
+      <tbody id="song-list-body"></tbody>
+    </table>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary" style="flex:1" onclick="exportJSON()">💾 Sauvegarder</button>
+    <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('import-input').click()">📂 Restaurer</button>
+    <button class="btn btn-primary" style="flex:1" onclick="showPdfModal()">📄 PDF</button>
+  </div>
+  <input type="file" id="import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 2 : SCÈNE (pavé numérique)
+══════════════════════════════════════════ -->
+<div id="page-scene" class="page">
+  <div class="scene-inner">
+    <div class="scene-title">Choisir une chanson</div>
+
+    <div id="numpad-display" class="numpad-display placeholder">_ _</div>
+
+    <div class="numpad">
+      <div class="numpad-key" onclick="numpadPress('1')">1</div>
+      <div class="numpad-key" onclick="numpadPress('2')">2</div>
+      <div class="numpad-key" onclick="numpadPress('3')">3</div>
+      <div class="numpad-key" onclick="numpadPress('4')">4</div>
+      <div class="numpad-key" onclick="numpadPress('5')">5</div>
+      <div class="numpad-key" onclick="numpadPress('6')">6</div>
+      <div class="numpad-key" onclick="numpadPress('7')">7</div>
+      <div class="numpad-key" onclick="numpadPress('8')">8</div>
+      <div class="numpad-key" onclick="numpadPress('9')">9</div>
+      <div class="numpad-key key-del" onclick="numpadDel()">⌫</div>
+      <div class="numpad-key" onclick="numpadPress('0')">0</div>
+      <div class="numpad-key key-go" onclick="numpadGo()">GO</div>
+    </div>
+
+    <button class="btn btn-ghost btn-full" onclick="showPage('page-liste')">← Liste</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 3 : PAROLES
+══════════════════════════════════════════ -->
+<div id="page-lyrics" class="page">
+  <div class="lyrics-header">
+    <div class="lyrics-num" id="lyrics-num">—</div>
+    <div class="lyrics-meta">
+      <div class="lyrics-song-line" id="lyrics-song-line">—</div>
+    </div>
+  </div>
+  <div class="lyrics-body" id="lyrics-body">—</div>
+  <div class="lyrics-nav">
+    <button class="btn btn-ghost" style="flex:1" onclick="showPage('page-scene')">← Retour</button>
+    <button class="btn btn-secondary btn-sm" onclick="lyricsNav(-1)">◀ Préc.</button>
+    <button class="btn btn-secondary btn-sm" onclick="lyricsNav(1)">Suiv. ▶</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL : DÉMARRAGE
+══════════════════════════════════════════ -->
+<div id="modal-start" class="modal-overlay active">
+  <div class="modal">
+    <h2>Bonjour 👋</h2>
+    <p>Veux-tu mettre à jour la liste des chansons ?<br><small style="color:var(--text-dim)">(connexion internet recommandée)</small></p>
+    <div class="modal-btns" style="flex-direction:column;">
+      <button class="btn btn-primary btn-full" onclick="closeModal('modal-start'); showPage('page-liste');">Oui, mettre à jour</button>
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modal-start'); showPdfModal();">Non, exporter PDF</button>
+      <button class="btn btn-ghost btn-full" onclick="closeModal('modal-start'); goToScene();">Aller en scène</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL : ÉDITION CHANSON
+══════════════════════════════════════════ -->
+<div id="modal-edit" class="modal-overlay">
+  <div class="modal" style="max-width:520px; max-height:90vh; overflow-y:auto;">
+    <div class="edit-num" id="edit-num">#00</div>
+    <div class="edit-form">
+      <label>Artiste</label>
+      <input type="text" id="edit-artist" placeholder="Nom de l'artiste">
+      <label>Titre</label>
+      <input type="text" id="edit-title" placeholder="Titre de la chanson">
+
+      <button class="btn btn-secondary btn-full" style="margin-top:14px" onclick="fetchLyrics()">
+        🔍 Récupérer les paroles automatiquement
+      </button>
+      <div id="fetch-status" class="fetch-status"></div>
+
+      <label>Paroles <small style="color:var(--text-dim)">(éditables manuellement)</small></label>
+      <textarea id="edit-lyrics" placeholder="Les paroles apparaîtront ici, ou saisissez-les manuellement…"></textarea>
+    </div>
+
+    <div class="modal-btns" style="margin-top:20px">
+      <button class="btn btn-success" onclick="saveEdit()">✓ Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL : PDF
+══════════════════════════════════════════ -->
+<div id="modal-pdf" class="modal-overlay">
+  <div class="modal">
+    <h2>📄 Exporter la liste</h2>
+    <p>Pour sauvegarder la liste en PDF sur ton iPad :</p>
+    <div class="pdf-info">
+      <strong>1.</strong> Appuie sur <strong>"Imprimer la liste"</strong> ci-dessous<br>
+      <strong>2.</strong> Dans Safari, un aperçu s'ouvre<br>
+      <strong>3.</strong> Pince l'aperçu avec deux doigts pour l'agrandir<br>
+      <strong>4.</strong> Appuie sur le bouton partage <strong>⬆️</strong><br>
+      <strong>5.</strong> Choisis <strong>"Enregistrer dans Fichiers"</strong>
+    </div>
+    <div class="modal-btns" style="margin-top:20px">
+      <button class="btn btn-primary" onclick="printList()">🖨️ Imprimer la liste</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-pdf'); goToScene();">Aller en scène</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-pdf')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL : CONFIRMATION SAUVEGARDE
+══════════════════════════════════════════ -->
+<div id="modal-confirm" class="modal-overlay">
+  <div class="modal">
+    <h2>✓ Chanson enregistrée</h2>
+    <p id="confirm-text"></p>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="closeModal('modal-confirm')">Continuer les modifications</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-confirm'); showPdfModal();">Exporter PDF</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm'); goToScene();">Aller en scène</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// DONNÉES : initialisation des 100 entrées
+// ══════════════════════════════════════════
+const STORAGE_KEY = 'repertoire_v1';
+let songs = [];
+
+function initSongs() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    songs = JSON.parse(saved);
+    // S'assurer qu'on a bien 100 entrées
+    while (songs.length < 100) {
+      songs.push({ artist: '', title: '', lyrics: '' });
+    }
+  } else {
+    songs = Array.from({length: 100}, () => ({ artist: '', title: '', lyrics: '' }));
+  }
+}
+
+function saveSongs() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION PAGES
+// ══════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goToScene() {
+  numpadCurrent = '';
+  updateNumpadDisplay();
+  showPage('page-scene');
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+function showPdfModal() {
+  document.getElementById('modal-pdf').classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// RENDU DE LA LISTE
+// ══════════════════════════════════════════
+function renderList() {
+  const tbody = document.getElementById('song-list-body');
+  tbody.innerHTML = '';
+  songs.forEach((song, i) => {
+    const num = i + 1;
+    const tr = document.createElement('tr');
+    const hasLyrics = song.lyrics && song.lyrics.trim().length > 0;
+    const hasInfo = song.artist || song.title;
+    tr.innerHTML = `
+      <td>${num}</td>
+      <td>
+        <span class="artist">${song.artist || '<span style="color:var(--border)">—</span>'}</span>
+        ${hasInfo ? `<span class="status-dot ${hasLyrics ? 'dot-ok' : 'dot-empty'}"></span>` : ''}
+      </td>
+      <td class="title">${song.title || ''}</td>
+    `;
+    tr.onclick = () => openEdit(i);
+    tbody.appendChild(tr);
+  });
+}
+
+// ══════════════════════════════════════════
+// ÉDITION D'UNE CHANSON
+// ══════════════════════════════════════════
+let editingIndex = null;
+
+function openEdit(i) {
+  editingIndex = i;
+  const song = songs[i];
+  document.getElementById('edit-num').textContent = `#${String(i+1).padStart(2,'0')}`;
+  document.getElementById('edit-artist').value = song.artist || '';
+  document.getElementById('edit-title').value = song.title || '';
+  document.getElementById('edit-lyrics').value = song.lyrics || '';
+  const fs = document.getElementById('fetch-status');
+  fs.className = 'fetch-status';
+  fs.textContent = '';
+  document.getElementById('modal-edit').classList.add('active');
+}
+
+async function tryLyricsOvh(artist, title) {
+  const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(7000) });
+  if (!resp.ok) throw new Error('not found');
+  const data = await resp.json();
+  if (!data.lyrics || !data.lyrics.trim()) throw new Error('empty');
+  return data.lyrics.trim();
+}
+
+async function tryLrcLib(artist, title) {
+  const url = `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(7000) });
+  if (!resp.ok) throw new Error('not found');
+  const results = await resp.json();
+  if (!results || results.length === 0) throw new Error('empty');
+  for (const r of results) {
+    if (r.plainLyrics && r.plainLyrics.trim()) return r.plainLyrics.trim();
+  }
+  throw new Error('no plain lyrics');
+}
+
+async function fetchLyrics() {
+  const artist = document.getElementById('edit-artist').value.trim();
+  const title = document.getElementById('edit-title').value.trim();
+  const fs = document.getElementById('fetch-status');
+
+  if (!artist || !title) {
+    fs.className = 'fetch-status error';
+    fs.textContent = "⚠️ Saisis d’abord l’artiste et le titre.";
+    return;
+  }
+
+  fs.className = 'fetch-status loading';
+  fs.textContent = '⏳ Recherche sur lyrics.ovh…';
+
+  try {
+    const lyrics = await tryLyricsOvh(artist, title);
+    document.getElementById('edit-lyrics').value = lyrics;
+    fs.className = 'fetch-status ok';
+    fs.textContent = '✓ Paroles récupérées via lyrics.ovh !';
+    return;
+  } catch(e) {}
+
+  fs.textContent = '⏳ lyrics.ovh indisponible, essai sur lrclib.net…';
+  try {
+    const lyrics = await tryLrcLib(artist, title);
+    document.getElementById('edit-lyrics').value = lyrics;
+    fs.className = 'fetch-status ok';
+    fs.textContent = '✓ Paroles récupérées via lrclib.net !';
+    return;
+  } catch(e) {}
+
+  fs.className = 'fetch-status error';
+  fs.textContent = '✗ Aucune source n’a trouvé ces paroles. Tu peux les saisir manuellement ci-dessous.';
+}
+
+function saveEdit() {
+  if (editingIndex === null) return;
+  const artist = document.getElementById('edit-artist').value.trim();
+  const title = document.getElementById('edit-title').value.trim();
+  const lyrics = document.getElementById('edit-lyrics').value.trim();
+
+  songs[editingIndex] = { artist, title, lyrics };
+  saveSongs();
+  renderList();
+  closeModal('modal-edit');
+
+  const num = editingIndex + 1;
+  document.getElementById('confirm-text').textContent =
+    `La chanson #${num}${artist ? ' — ' + artist : ''}${title ? ' / ' + title : ''} a bien été enregistrée.`;
+  document.getElementById('modal-confirm').classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// PAVÉ NUMÉRIQUE (PAGE SCÈNE)
+// ══════════════════════════════════════════
+let numpadCurrent = '';
+
+function updateNumpadDisplay() {
+  const el = document.getElementById('numpad-display');
+  if (numpadCurrent === '') {
+    el.textContent = '_ _';
+    el.className = 'numpad-display placeholder';
+  } else {
+    el.textContent = numpadCurrent;
+    el.className = 'numpad-display';
+  }
+}
+
+function numpadPress(digit) {
+  if (numpadCurrent.length >= 3) return;
+  numpadCurrent += digit;
+  updateNumpadDisplay();
+}
+
+function numpadDel() {
+  numpadCurrent = numpadCurrent.slice(0, -1);
+  updateNumpadDisplay();
+}
+
+function numpadGo() {
+  const num = parseInt(numpadCurrent, 10);
+  if (!numpadCurrent || isNaN(num) || num < 1 || num > 100) {
+    showToast('Numéro invalide (1 à 100)');
+    return;
+  }
+  showLyrics(num - 1);
+  numpadCurrent = '';
+  updateNumpadDisplay();
+}
+
+// ══════════════════════════════════════════
+// AFFICHAGE DES PAROLES
+// ══════════════════════════════════════════
+let currentLyricsIndex = null;
+
+function showLyrics(i) {
+  const song = songs[i];
+  currentLyricsIndex = i;
+  document.getElementById('lyrics-num').textContent = `#${i+1}`;
+  const artist = song.artist || '';
+  const title = song.title || '';
+  let songLine = '';
+  if (artist && title) songLine = artist + ' — ' + title;
+  else if (artist) songLine = artist;
+  else if (title) songLine = title;
+  else songLine = '—';
+  document.getElementById('lyrics-song-line').textContent = songLine;
+  document.getElementById('lyrics-body').textContent =
+    song.lyrics || '(Aucune parole enregistrée pour cette chanson)';
+  showPage('page-lyrics');
+}
+
+function lyricsNav(dir) {
+  if (currentLyricsIndex === null) return;
+  let next = currentLyricsIndex + dir;
+  if (next < 0) next = 99;
+  if (next > 99) next = 0;
+  showLyrics(next);
+}
+
+// ══════════════════════════════════════════
+// IMPRESSION / PDF
+// ══════════════════════════════════════════
+function printList() {
+  const rows = songs.map((s, i) => `
+    <tr>
+      <td style="width:40px;color:#888;font-weight:bold">${i+1}</td>
+      <td style="padding:6px 12px;font-weight:500">${s.artist || ''}</td>
+      <td style="padding:6px 12px;color:#555">${s.title || ''}</td>
+    </tr>
+  `).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>Mon Répertoire</title>
+    <style>
+      body { font-family: -apple-system, sans-serif; padding: 30px; color: #1a1a1a; }
+      h1 { font-size: 22px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      tr { border-bottom: 1px solid #eee; }
+      td { padding: 6px 8px; }
+      tr:nth-child(even) { background: #f9f9f9; }
+    </style>
+    </head><body>
+    <h1>Mon Répertoire</h1>
+    <table>${rows}</table>
+    </body></html>
+  `);
+  win.document.close();
+  win.print();
+}
+
+// ══════════════════════════════════════════
+// EXPORT / IMPORT JSON
+// ══════════════════════════════════════════
+function exportJSON() {
+  const data = {
+    version: 1,
+    date: new Date().toISOString().slice(0, 10),
+    songs: songs
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `repertoire_${data.date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Sauvegarde téléchargée !');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Accepte le format avec wrapper { songs: [...] } ou un tableau direct
+      const imported = Array.isArray(data) ? data : data.songs;
+      if (!Array.isArray(imported)) throw new Error('Format invalide');
+      // S'assurer d'avoir exactement 100 entrées
+      songs = imported.slice(0, 100);
+      while (songs.length < 100) songs.push({ artist: '', title: '', lyrics: '' });
+      saveSongs();
+      renderList();
+      showToast('✓ Liste restaurée (' + imported.length + ' entrées) !');
+    } catch(err) {
+      showToast('✗ Fichier invalide, import annulé.');
+    }
+    // Réinitialiser l'input pour permettre de recharger le même fichier
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+initSongs();
+renderList();
+</script>
+</body>
+</html>
